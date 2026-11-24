@@ -2,17 +2,13 @@
 
 Functions:
 
-Initializes Express server and middleware (CORS, JSON parsing)
+Creates and configures the Express application and middleware (CORS, JSON parsing)
 
-Connects to MongoDB using Mongoose
+Registers the application API routes
 
 Loads environment variables via .env
 
-Sets up Socket.IO for real-time complaint updates
-
-Handles user connection and live complaint notifications
-
-Starts the server on the specified port
+Exports the Express application without connecting to MongoDB or listening on a port
 
 Key Points:
 
@@ -24,7 +20,19 @@ Uses socket.io for live updates between users and admins
 
 Loads config securely using dotenv
 
-Server listens on PORT from .env
+The HTTP server is started by index.js only after the initial MongoDB connection succeeds
+
+# File: index.js
+
+Functions:
+
+Loads environment variables and validates startup configuration
+
+Awaits the initial MongoDB connection before starting the HTTP listener
+
+Reports startup failures without exposing the MongoDB connection URI
+
+Closes the HTTP server and MongoDB connection on SIGINT or SIGTERM
 
 # File: config/db.js
 
@@ -32,9 +40,9 @@ Functions:
 
 Establishes MongoDB connection using Mongoose
 
-Handles connection success or failure
+Returns a promise that resolves after the initial connection succeeds and rejects on failure
 
-Logs connection status in console
+Logs successful connection status without terminating the process on failure
 
 Key Points:
 
@@ -42,7 +50,7 @@ Centralized DB connection for better reusability
 
 Uses process.env.MONGO_URI for connection string
 
-Exports a single connect function for use in app.js
+Exports the single connect function used by index.js
 
 # File: routes/auth.js
 

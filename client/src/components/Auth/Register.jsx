@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useHistory } from 'react-router-dom';
+import API_URL from '../../config';
 
 const Register = () => {
     const [email, setEmail] = useState('');
@@ -25,7 +26,7 @@ const Register = () => {
         
         try {
             // 1. Register the user
-            await axios.post('https://campus-complaint-system.onrender.com/api/auth/register', { 
+            await axios.post(`${API_URL}/auth/register`, { 
                 email: email.trim(), 
                 password, 
                 name: name.trim(), 

@@ -61,7 +61,7 @@ To set up and run the project, follow these steps:
    ```
 8. **To run the server, navigate to the server directory and run:**
    ```
-   node app.js
+   npm start
    ```
 9. **To run the client, navigate to the client directory and run:**
    ```

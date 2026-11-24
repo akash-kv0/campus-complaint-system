@@ -1,5 +1,7 @@
+// client/src/pages/StaffDashboard.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import API_URL from '../config';
 
 const statusColors = {
   'pending': 'secondary',
@@ -24,7 +26,7 @@ const StaffDashboard = () => {
     const fetchAssignedComplaints = async () => {
         setLoading(true);
         try {
-            const res = await axios.get('https://campus-complaint-system.onrender.com/api/complaints/assigned', {
+            const res = await axios.get(`${API_URL}/complaints/assigned`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             setComplaints(res.data);
@@ -43,7 +45,7 @@ const StaffDashboard = () => {
 
     const fetchProfile = async () => {
         try {
-            const res = await axios.get('https://campus-complaint-system.onrender.com/api/auth/profile', {
+            const res = await axios.get(`${API_URL}/auth/profile`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             setUserInfo(res.data);
@@ -85,7 +87,7 @@ const StaffDashboard = () => {
 
     const submitStaffUpdate = async (selectedComplaint, formData) => {
         try {
-            await axios.post(`https://campus-complaint-system.onrender.com/api/complaints/${selectedComplaint._id}/staff-update`, formData, {
+            await axios.post(`${API_URL}/complaints/${selectedComplaint._id}/staff-update`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     Authorization: `Bearer ${localStorage.getItem('token')}`

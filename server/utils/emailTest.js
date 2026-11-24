@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
-require('dotenv').config({ path: '../.env' });  // Load from parent folder
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
 async function sendTestEmail() {
   try {
@@ -25,4 +26,8 @@ async function sendTestEmail() {
   }
 }
 
-sendTestEmail();
+if (require.main === module) {
+  sendTestEmail();
+}
+
+module.exports = { sendTestEmail };

@@ -1,3 +1,4 @@
+// server/routes/auth.js
 const express = require('express');
 const { register, login, getUserStats } = require('../controllers/authController');
 const router = express.Router();
@@ -7,7 +8,7 @@ const isAdmin = require('../middleware/isAdmin');
 const jwt = require('jsonwebtoken');
 
 // Public routes
-router.get('/stats', getUserStats);
+router.get('/stats', authMiddleware, isAdmin, getUserStats);
 
 // Register route
 router.post('/register', register);

@@ -52,24 +52,24 @@
 
 ## 🎯 Overview
 
-Smart Campus Complaint System is a full-stack web application designed to streamline complaint management in educational institutions. The platform enables students to submit complaints with multimedia attachments, allows staff members to track and resolve assigned issues, and provides administrators with comprehensive oversight through analytics and management tools.
+Smart Campus Complaint System is a full-stack web application designed to streamline complaint management in educational institutions. Students can submit complaints with image attachments, staff members can update assigned complaints, and administrators can manage complaint workflows and view protected aggregate statistics.
 
-The system implements a three-tier role-based access control (Student, Staff, Admin) with JWT authentication, real-time status updates, automated email notifications, and a feedback mechanism for continuous improvement.
+The system implements student, staff, and administrator roles with JWT authentication, complaint status updates, email notifications, and a feedback mechanism. Complaint images are stored in a private Amazon S3 bucket and delivered through expiring signed URLs.
 
 ---
 
 ## ✨ Features
 
 ### 🔐 Authentication & Authorization
-- **Role-Based Access Control** - Separate authentication flows for Students, Staff, and Administrators
-- **JWT Token Management** - Secure session handling with JSON Web Tokens
+- **Role-Based Access Control** - Student and staff self-registration; administrator accounts must be provisioned separately
+- **JWT Token Management** - API requests use JWTs in the `Authorization: Bearer <token>` header; tokens expire after one hour
 - **Password Encryption** - bcryptjs hashing for secure credential storage
 - **Protected Routes** - Middleware-based route protection based on user roles
 
 ### 📝 Complaint Management
 - **Complaint Submission** - Create complaints with title, description, category, urgency level, and image attachments
 - **Status Tracking** - Three-tier status workflow: `pending` → `in-progress` → `resolved`
-- **Image Upload** - Multer-based file handling for complaint evidence
+- **Private Image Storage** - Multer buffers image uploads and sends them to private S3 storage; complaint responses contain signed image URLs that expire after one hour
 - **Urgency Levels** - Configurable due dates (1, 2, or 3+ days)
 
 ### 👥 Staff Operations
@@ -80,8 +80,8 @@ The system implements a three-tier role-based access control (Student, Staff, Ad
 ### 👨‍💼 Admin Dashboard
 - **Complaint Overview** - View all complaints with filtering and search capabilities
 - **Staff Assignment** - Assign complaints to available staff members
-- **Statistics & Analytics** - Real-time metrics on complaints, users, and resolution times
-- **User Management** - Access to staff and student user lists
+- **Statistics & Analytics** - Complaint, user-count, and response-time aggregates restricted to authenticated administrators
+- **Staff Assignment** - Retrieve the staff list for assigning complaints
 
 ### 💬 Feedback System
 - **Rating System** - 5-star rating mechanism for resolved complaints
@@ -122,9 +122,8 @@ The system implements a three-tier role-based access control (Student, Staff, Ad
 ### Tools & Utilities
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| **Multer** | 1.4.2 | File upload middleware |
+| **Multer** | 1.4.4 | File upload middleware |
 | **Nodemailer** | 7.0.4 | Email service integration |
-| **Socket.io** | 4.0.0 | Real-time bidirectional communication |
 | **dotenv** | 10.0.0 | Environment variable management |
 | **CORS** | 2.8.5 | Cross-origin resource sharing |
 
@@ -136,7 +135,7 @@ The application follows a **three-tier architecture** pattern:
 
 ```
 ┌─────────────────┐
-│   React Client  │  (Port 3000)
+│   React Client  │  (Port configured at startup; local CORS origin: 3000)
 │   (Frontend)    │
 └────────┬────────┘
          │ HTTP/REST API
@@ -157,8 +156,8 @@ The application follows a **three-tier architecture** pattern:
 2. **Backend (Express)** - RESTful API endpoints handle business logic and authentication
 3. **Database (MongoDB)** - Data persistence with Mongoose schemas
 4. **Authentication** - JWT tokens stored in localStorage, validated via middleware
-5. **File Storage** - Multer processes uploads to `server/uploads/` directory
-6. **Email Service** - Nodemailer sends notifications asynchronously
+5. **File Storage** - Multer validates and buffers JPEG, PNG, and WebP uploads (maximum 5 MB); the backend stores them in a private S3 bucket and returns one-hour signed URLs when reading complaints
+6. **Email Service** - Nodemailer sends resolution and assignment notifications
 
 ---
 
@@ -175,14 +174,7 @@ Before installation, ensure you have the following installed:
 
 ## 🚀 Installation
 
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/tharani-2006/smart-campus-complaint-system.git
-cd smart-campus-complaint-system
-```
-
-### 2. Install Dependencies
+### 1. Install Dependencies
 
 Install server dependencies:
 
@@ -198,28 +190,13 @@ cd ../client
 npm install
 ```
 
-### 3. Configure Environment Variables
+### 2. Configure Environment Variables
 
-Create a `.env` file in the `server` directory:
+Create `server/.env` using the variables described in [Configuration](#-configuration). Do not commit this file. The root `.gitignore` excludes `.env` files.
 
-```bash
-cd ../server
-touch .env
-```
+For local development, `client/.env` sets `REACT_APP_API_URL=http://localhost:5000/api`, and the backend uses `FRONTEND_URL=http://localhost:3000`. Restart the relevant development server after changing environment variables.
 
-Add the following environment variables (see [Configuration](#-configuration) for details):
-
-```env
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret_key
-PORT=5000
-EMAIL_USER=your_email@gmail.com
-EMAIL_PASS=your_app_password
-ADMIN_EMAIL=admin@campus.edu
-ADMIN_PASSWORD=secure_admin_password
-```
-
-### 4. Start MongoDB
+### 3. Start MongoDB
 
 **Local MongoDB:**
 ```bash
@@ -235,7 +212,7 @@ mongod
 **MongoDB Atlas:**
 - Use your Atlas connection string in `MONGO_URI`
 
-### 5. Run the Application
+### 4. Run the Application
 
 **Start the backend server:**
 ```bash
@@ -245,13 +222,23 @@ npm start
 ```
 
 **Start the frontend client (in a new terminal):**
-```bash
+
+The backend CORS setting is configured for the local frontend origin `http://localhost:3000`. Start CRA on that port:
+
+PowerShell:
+```powershell
 cd client
 npm start
 # Client runs on http://localhost:3000
 ```
 
-The application will automatically open in your default browser at `http://localhost:3000`.
+macOS/Linux:
+```bash
+cd client
+PORT=3000 npm start
+```
+
+Open `http://localhost:3000` in your browser.
 
 ---
 
@@ -259,17 +246,33 @@ The application will automatically open in your default browser at `http://local
 
 ### Environment Variables
 
-Create a `.env` file in the `server` directory with the following variables:
+Create a private `server/.env` file and set the variables required by the deployment:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `MONGO_URI` | MongoDB connection string | `mongodb://localhost:27017/campus-complaints` or Atlas URI |
-| `JWT_SECRET` | Secret key for JWT token signing | `your_super_secret_jwt_key_here` |
+| `MONGO_URI` | MongoDB connection string | Local MongoDB URI or MongoDB Atlas URI |
+| `JWT_SECRET` | Secret used to sign and verify JWTs | Set a long, unique secret outside source control |
 | `PORT` | Server port number | `5000` |
-| `EMAIL_USER` | Email address for sending notifications | `noreply@campus.edu` |
-| `EMAIL_PASS` | Email service app password | `your_app_specific_password` |
-| `ADMIN_EMAIL` | Default admin email for login | `admin@campus.edu` |
-| `ADMIN_PASSWORD` | Default admin password | `SecurePassword123!` |
+| `FRONTEND_URL` | Exact allowed browser origin for CORS, without a path | `http://localhost:3000` |
+| `EMAIL_USER` | Email account used for notifications | Set in deployment environment |
+| `EMAIL_PASS` | Email account app password | Keep secret; set outside source control |
+| `AWS_REGION` | S3 bucket region | Your bucket's AWS region |
+| `AWS_S3_BUCKET` | Private S3 bucket name | Your bucket name |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Optional AWS SDK environment credentials | Prefer an IAM role in production; never commit credentials |
+
+`server/.env.example` contains a non-secret local CORS origin example, not a complete secrets template. The root `.gitignore` excludes `.env` and `.env.*` while allowing `.env.example`.
+
+The frontend uses Create React App environment variables:
+
+| File/variable | Purpose |
+|---------------|---------|
+| `client/.env` / `REACT_APP_API_URL` | Local backend API base URL, including `/api` |
+| `client/.env.production` / `REACT_APP_API_URL` | Set the production backend API base URL before building; it is blank until the deployed URL is known |
+
+`client/src/config.js` is the central source for this API base URL. Restart the development server after changing `.env`; production variables are embedded when the frontend is built.
+
+The public registration endpoint accepts only `student` and `staff` roles. It does not create administrators. Provision administrator accounts through a trusted database/admin process with a bcrypt-hashed password and `role: "admin"`; do not enable public admin registration.
+
 
 ### MongoDB Connection
 
@@ -310,13 +313,13 @@ MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/smart-campus-compl
 - Track resolution progress
 
 #### 👨‍💼 Administrator
-- Login at `/login/admin` (credentials from `.env`)
+- Login at `/login/admin` with an administrator account provisioned through a trusted process
 - Access admin dashboard at `/admin/dashboard`
 - View all complaints across the system
 - Assign complaints to staff members
 - Update complaint statuses
 - View statistics and analytics
-- Manage user accounts
+- View staff options for complaint assignment
 
 ### API Endpoints
 
@@ -330,9 +333,13 @@ See [API Documentation](#-api-documentation) for complete endpoint details.
 smart-campus-complaint-system/
 │
 ├── client/                          # React frontend application
+│   ├── .env                          # Local REACT_APP_API_URL (ignored by Git)
+│   ├── .env.example                  # Non-secret frontend config example
+│   ├── .env.production               # Set deployed API URL before production build
 │   ├── public/
 │   │   └── index.html              # HTML template
 │   ├── src/
+│   │   ├── config.js                 # API base URL from REACT_APP_API_URL
 │   │   ├── api/
 │   │   │   └── auth.js             # API service functions
 │   │   ├── assets/
@@ -378,17 +385,17 @@ smart-campus-complaint-system/
 │   │   ├── complaint.js            # Complaint routes
 │   │   ├── feedback.js             # Feedback routes
 │   │   └── stats.js                # Statistics routes
-│   ├── uploads/                    # Uploaded files directory
 │   ├── utils/
 │   │   ├── emailTest.js            # Email testing utility
-│   │   └── mailer.js               # Email service configuration
+│   │   ├── mailer.js               # Email service configuration
+│   │   └── s3.js                   # Private S3 upload and signed URL helpers
 │   ├── app.js                      # Express application entry point
 │   ├── package.json                # Backend dependencies
+│   ├── .env.example                # Non-secret CORS origin example
 │   └── .env                        # Environment variables (not in repo)
 │
-├── Docs/                            # Documentation
-│   ├── ClientSide.md               # Client-side documentation
-│   └── ServerSide.md               # Server-side documentation
+├── ClientSide.md                    # Client-side documentation
+├── ServerSide.md                    # Server-side documentation
 │
 ├── .gitignore                       # Git ignore rules
 ├── package.json                     # Root package.json
@@ -414,6 +421,8 @@ Content-Type: application/json
   "role": "student"
 }
 ```
+
+Public registration accepts `student` and `staff` roles only. Administrator accounts must be provisioned separately through a trusted process.
 
 #### Login
 ```http
@@ -449,6 +458,8 @@ Content-Type: multipart/form-data
   "image": <file>
 }
 ```
+
+The optional `image` field accepts JPEG, PNG, or WebP files up to 5 MB. Files are uploaded to private S3 storage; complaint read responses return signed URLs that expire after one hour.
 
 #### Get User's Complaints
 ```http
@@ -504,15 +515,25 @@ Content-Type: multipart/form-data
 
 ### Statistics Endpoints
 
+All statistics endpoints require a valid JWT belonging to an administrator. Send it in the `Authorization: Bearer <token>` header.
+
+Requests without a token, or with an invalid or expired token, return `401 Unauthorized`. A valid student or staff token returns `403 Forbidden`.
+
+The complaint statistics response contains `total`, `resolved`, and `avgResponseTime` (hours). The user statistics response contains only the `total`, `students`, and `staff` counts.
+
 #### Get Complaint Statistics
 ```http
 GET /api/stats/complaints
+Authorization: Bearer <token>
 ```
 
 #### Get User Statistics
 ```http
 GET /api/stats/users
+Authorization: Bearer <token>
 ```
+
+The legacy aliases `GET /api/complaints/stats` and `GET /api/auth/stats` use the same admin authorization.
 
 ### Feedback Endpoints
 
@@ -533,31 +554,25 @@ Content-Type: application/json
 
 ## 🚢 Deployment
 
-### Backend Deployment (Render/Heroku)
+### Backend Deployment
 
-1. **Set Environment Variables** in your hosting platform
-2. **Update MongoDB URI** to production database
-3. **Configure CORS** to allow frontend domain
-4. **Deploy:**
+1. Set `MONGO_URI`, `JWT_SECRET`, `FRONTEND_URL`, email settings, AWS region and S3 bucket settings in the hosting platform.
+2. Set `FRONTEND_URL` to the exact production frontend origin, including scheme and any non-default port, with no path. CORS allows that origin only and does not enable cookie credentials.
+3. Use a private MongoDB deployment and least-privilege access to the private S3 bucket. Do not commit secrets.
+4. Configure the host to install dependencies in `server/` and start the application with `npm start` (or `npm run dev` for local development).
 
-```bash
-cd server
-git push heroku main
-# or
-# Deploy to Render via GitHub integration
-```
+### Frontend Deployment
 
-### Frontend Deployment (Vercel/Netlify)
-
-1. **Update API Base URL** in `client/src/api/auth.js`
-2. **Build the application:**
+1. Set `REACT_APP_API_URL` in the frontend hosting environment to the backend API base URL ending in `/api` (for example, `https://<backend-host>/api`). `client/src/config.js` reads this value for frontend API requests.
+2. Set the variable before building; Create React App embeds `REACT_APP_*` variables at build time. The local `client/.env.production` is intentionally blank until the real backend URL is known.
+3. **Build the application:**
 
 ```bash
 cd client
 npm run build
 ```
 
-3. **Deploy the `build` folder** to your hosting platform
+4. Deploy the generated `client/build` folder to a static hosting provider.
 
 ### Environment Variables for Production
 
@@ -595,17 +610,18 @@ Error: Token expired
 ```
 **Solution:** Log out and log in again to generate a new token.
 
-#### File Upload Fails
+#### File Upload or Image Display Fails
 ```
 Error: Multer error
 ```
-**Solution:** Ensure `server/uploads/` directory exists and has write permissions.
+**Solution:** Check the backend's AWS region and bucket settings, and verify the server identity has S3 object write/read permissions. Keep the bucket private; image signed URLs expire after one hour.
 
 #### CORS Error
 ```
 Error: CORS policy blocked
 ```
 **Solution:** Verify CORS is enabled in `server/app.js` and frontend URL is whitelisted.
+Set `FRONTEND_URL` to the exact frontend origin (local development: `http://localhost:3000`) and `REACT_APP_API_URL` to the backend API base URL. Restart the backend after changing CORS configuration and restart CRA after changing client environment variables.
 
 ---
 
@@ -649,7 +665,7 @@ Contributions are welcome! Please follow these steps:
 
 <div align="center">
 
-**Made with ❤️ by tharani-2006**
+**Made with ❤️ by akash**
 
 ⭐ Star this repo if you find it helpful!
 

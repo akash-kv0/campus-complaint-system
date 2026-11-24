@@ -1,6 +1,8 @@
+// client/src/pages/ComplaintDetail.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
+import API_URL from '../config';
 
 const ComplaintDetail = () => {
     const { id } = useParams();
@@ -12,7 +14,7 @@ const ComplaintDetail = () => {
         const fetchComplaint = async () => {
             setLoading(true);
             try {
-                const res = await axios.get(`https://campus-complaint-system.onrender.com/api/complaints/${id}`, {
+                const res = await axios.get(`${API_URL}/complaints/${id}`, {
                     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
                 });
                 setComplaint(res.data);

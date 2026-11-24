@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useHistory } from 'react-router-dom';
+import API_URL from '../../config';
 
 const Login = ({ setIsLoggedIn, onLoginSuccess }) => {
     const [email, setEmail] = useState('');
@@ -13,7 +14,7 @@ const Login = ({ setIsLoggedIn, onLoginSuccess }) => {
         e.preventDefault();
         setError('');
         try {
-            const response = await axios.post('https://campus-complaint-system.onrender.com/api/auth/login', { email, password, role });
+            const response = await axios.post(`${API_URL}/auth/login`, { email, password, role });
             localStorage.setItem('token', response.data.token);
             setIsLoggedIn(true);
             if (onLoginSuccess) {

@@ -1,6 +1,8 @@
+// client/src/pages/MyComplaints.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useHistory } from 'react-router-dom';
+import API_URL from '../config';
 
 const statusColors = {
   'pending': 'secondary',
@@ -24,7 +26,7 @@ const MyComplaints = () => {
     const fetchComplaints = async () => {
         setLoading(true);
         try {
-            const complaintsRes = await axios.get('https://campus-complaint-system.onrender.com/api/complaints/my', {
+            const complaintsRes = await axios.get(`${API_URL}/complaints/my`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             setComplaints(complaintsRes.data);
@@ -36,7 +38,7 @@ const MyComplaints = () => {
 
     const fetchFeedbacks = async () => {
         try {
-            const feedbacksRes = await axios.get('https://campus-complaint-system.onrender.com/api/feedback', {
+            const feedbacksRes = await axios.get(`${API_URL}/feedback`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             setFeedbacks(feedbacksRes.data);
@@ -47,7 +49,7 @@ const MyComplaints = () => {
 
     const fetchProfile = async () => {
         try {
-            const profileRes = await axios.get('https://campus-complaint-system.onrender.com/api/auth/profile', {
+            const profileRes = await axios.get(`${API_URL}/auth/profile`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             setUserInfo(profileRes.data);
@@ -61,6 +63,13 @@ const MyComplaints = () => {
         fetchFeedbacks();
         fetchProfile();
     }, []);
+
+    // Recalculate stats whenever complaints change
+    useEffect(() => {
+        if (complaints && complaints.length >= 0) {
+            calculateStats(complaints);
+        }
+    }, [complaints]);
 
     const calculateStats = (complaintsData) => {
         const stats = {
@@ -84,7 +93,7 @@ const MyComplaints = () => {
 
     const submitFeedback = async (complaintId, rating, comment) => {
         try {
-            await axios.post('https://campus-complaint-system.onrender.com/api/feedback', { complaintId, rating, comment }, {
+            await axios.post(`${API_URL}/feedback`, { complaintId, rating, comment }, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             fetchFeedbacks();

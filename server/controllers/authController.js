@@ -67,48 +67,72 @@ const login = async (req, res) => {
     const { email, password, role } = req.body;
 
     try {
-        if (role === 'admin') {
-            // Only allow the admin from .env
-            if (
-                email === process.env.ADMIN_EMAIL &&
-                password === process.env.ADMIN_PASSWORD
-            ) {
-                // You can generate a token for admin (no DB lookup needed)
-                const token = jwt.sign(
-                    { id: 'admin', email, role: 'admin', name: 'Admin' },
-                    process.env.JWT_SECRET,
-                    { expiresIn: '1h' }
-                );
-                return res.status(200).json({
-                    token,
-                    user: { id: 'admin', email, role: 'admin', name: 'Admin' }
-                });
-            } else {
-                return res.status(400).json({ message: 'Invalid admin credentials' });
-            }
+        // Validate required fields
+        if (!email || !password || !role) {
+            return res.status(400).json({
+                message: 'Email, password and role are required'
+            });
         }
 
-        // For non-admin users, proceed as usual
-        const user = await User.findOne({ email, role });
+        // Validate role
+        if (!['student', 'staff', 'admin'].includes(role)) {
+            return res.status(400).json({
+                message: 'Invalid role'
+            });
+        }
+
+        // Find user in database
+        const user = await User.findOne({
+            email: email.trim(),
+            role
+        });
+
         if (!user) {
-            return res.status(400).json({ message: 'Email not found' });
+            return res.status(400).json({
+                message: 'Invalid email or role'
+            });
         }
+
+        // Compare password with hashed password
         const isMatch = await bcrypt.compare(password, user.password);
+
         if (!isMatch) {
-            return res.status(400).json({ message: 'Incorrect password' });
+            return res.status(400).json({
+                message: 'Incorrect password'
+            });
         }
+
+        // Generate JWT
         const token = jwt.sign(
-            { id: user._id, email: user.email, role: user.role, name: user.name },
+            {
+                id: user._id,
+                email: user.email,
+                role: user.role,
+                name: user.name
+            },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
-        res.status(200).json({ token, user: { id: user._id, email: user.email, role: user.role, name: user.name } });
+
+        res.status(200).json({
+            token,
+            user: {
+                id: user._id,
+                email: user.email,
+                role: user.role,
+                name: user.name
+            }
+        });
+
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        console.error('Login error:', error);
+        res.status(500).json({
+            message: 'Server error during login'
+        });
     }
 };
 
-// Get user statistics (public)
+// Get user statistics (admin only)
 const getUserStats = async (req, res) => {
     try {
         console.log('getUserStats called');

@@ -1,3 +1,4 @@
+// client/src/App.jsx
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
 import Navbar from './components/Navbar';
@@ -19,27 +20,53 @@ const App = () => {
 
     useEffect(() => {
         const token = localStorage.getItem('token');
-        setIsLoggedIn(!!token);
-        if (token) {
-            try {
-                const decoded = jwtDecode(token);
-                setUserRole(decoded.role);
-                setUserEmail(decoded.role === 'admin' ? 'Admin' : decoded.email);
-                setUserInfo({
-                    name: decoded.name,
-                    department: decoded.department,
-                    email: decoded.email
-                });
-            } catch (e) {
+        if (!token) {
+            setIsLoggedIn(false);
+            setUserRole('');
+            setUserEmail('');
+            setUserInfo({});
+            return;
+        }
+
+        let expirationTimer;
+        try {
+            const decoded = jwtDecode(token);
+            if (decoded.exp && decoded.exp * 1000 <= Date.now()) {
+                localStorage.removeItem('token');
+                setIsLoggedIn(false);
                 setUserRole('');
                 setUserEmail('');
                 setUserInfo({});
+                return;
             }
-        } else {
+
+            setIsLoggedIn(true);
+            setUserRole(decoded.role);
+            setUserEmail(decoded.role === 'admin' ? 'Admin' : decoded.email);
+            setUserInfo({
+                name: decoded.name,
+                department: decoded.department,
+                email: decoded.email
+            });
+
+            if (decoded.exp) {
+                expirationTimer = window.setTimeout(() => {
+                    localStorage.removeItem('token');
+                    setIsLoggedIn(false);
+                    setUserRole('');
+                    setUserEmail('');
+                    setUserInfo({});
+                }, decoded.exp * 1000 - Date.now());
+            }
+        } catch (e) {
+            localStorage.removeItem('token');
+            setIsLoggedIn(false);
             setUserRole('');
             setUserEmail('');
             setUserInfo({});
         }
+
+        return () => window.clearTimeout(expirationTimer);
     }, []);
 
     const handleLogout = () => {

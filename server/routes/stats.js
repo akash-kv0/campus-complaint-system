@@ -1,10 +1,13 @@
+// server/routes/stats.js
 const express = require('express');
 const router = express.Router();
 const Complaint = require('../models/Complaint');
 const User = require('../models/User');
+const authMiddleware = require('../middleware/authMiddleware');
+const isAdmin = require('../middleware/isAdmin');
 
-// Get complaint statistics (public)
-router.get('/complaints', async (req, res) => {
+// Get complaint statistics (admin only)
+router.get('/complaints', authMiddleware, isAdmin, async (req, res) => {
     try {
         console.log('getComplaintStats called from separate route');
         
@@ -50,8 +53,8 @@ router.get('/complaints', async (req, res) => {
     }
 });
 
-// Get user statistics (public)
-router.get('/users', async (req, res) => {
+// Get user statistics (admin only)
+router.get('/users', authMiddleware, isAdmin, async (req, res) => {
     try {
         console.log('getUserStats called from separate route');
         
